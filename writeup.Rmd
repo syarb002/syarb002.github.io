@@ -1,0 +1,115 @@
+### Prediction Assignment Writeup
+Sean Yarborough  
+November 12, 2016  
+
+#### Introduction  
+The purpose of this assignment was to construct a model to estimate the exercise class from the data provided in the training sample.  The training sample contained a total of N = 19,622 samples; the testing sample contained an additional twenty.  
+
+#### Data & Preprocessing  
+Sample data was downloaded and brought into R with the following steps:  
+```{r eval = FALSE}
+library(data.table); library(dplyr); library(caret)
+
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", "training.csv")
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", "testing.csv")
+
+training <- fread("training.csv"); validation <- fread("testing.csv")
+```
+The testing set was renamed "validation" since it would not be used for immediate testing, but instead as a final test of model accuracy.  After preprocessing, a separate testing set was created.  Also, data were imported as data.frames for faster work and compatibility with dplyr.  
+
+Prior to modeling, there were several preprocessing steps involved to ensure integrity of the data being used.  In checking a summary of the data, there were many "#DIV/0!" entries that appeared in numeric columns (presumably from a bad Excel formula upstream somewhere), and R had not correctly imported many of the columns as the correct class.  The following script was used to go through each of the columns in the training data, remove the "#DIV/0!" values, and set the column class to numeric.  
+
+```{r eval = FALSE}
+for (i in 8:(length(names(training))-1)) {
+    if (length(training[training[[i]] == "#DIV/0!"][[i]]) > 0) {
+        training[training[[i]] == "#DIV/0!"][[i]] <- ""
+    }
+    training[[i]] <- as.numeric(training[[i]])
+}
+```
+
+After this step, caret's nearZeroVar function was used to remove any potential predictors with low variance.
+
+```{r eval = FALSE}
+training <- select(training, -nearZeroVar(training))
+```
+
+Finally, many columns were left with only a few values populated, and the majority missing.  To ensure parity of the samples, the following script removes any predictor columns for which more than half of the values are missing.  
+
+```{r eval = FALSE}
+p <- 0
+for (i in 1:(length(names(training))-1)) {
+    if (sum(is.na(training[[i]]) == TRUE) > nrow(training)*0.5) {
+        p <- c(p, i) 
+    }
+}
+training <- select(training, -p)
+```
+
+A summary of the processed and "cleaned" training set:  
+
+```{r}
+summary(train)
+```
+
+With this preprocessing completed, the remaining data were split 75/25 into training and testing samples, named "train" and "test."  
+
+```{r eval = FALSE}
+inTrain <- createDataPartition(training$classe, p = 0.75)[[1]]
+test <- training[-inTrain]
+train <- training[inTrain]
+```
+```{r}
+dim(train); dim(test)
+```  
+
+#### Modeling  
+
+A variety of modeling techniques were tried to find the best possible accuracy, some including principal components analysis as a preprocessing step, others not.  For brevity, the details of those models are not detailed here, but a summary of the obtained classification accuracy is below for reference.
+
+**fit** - Classification tree (rpart) = Test Set Accuracy 0.4959  
+**fit2** - Linear discriminant analysis (lda) = Test Set Accuracy 0.7068  
+**fit3** - Classification tree with PCA pre-processing = Test Set Accuracy 0.4345  
+**fit4** - Linear discriminant analysis with PCA pre-processing = Test Set Accuracy 0.5381  
+**fit5** - Random forest (ntree = 1) = Test Set Accuracy 0.9366  
+**fit6** - Random forest (ntree = 10) = Test Set Accuracy 0.9857  
+**fit7** - Random forest (ntree = 20) = Test Set Accuracy 0.9882  
+
+*(Note that for the random forest fits, I had to limit the number of trees because I did not have enough memory on my machine to handle the default of 500, and was getting nasty memory allocation errors in R.)*  
+
+Ultimately, fit7 was selected as the best model on the basis of test set prediction accuracy; it was generated and tested as follows:  
+
+```{r eval = FALSE}
+fit7 <- train(classe ~., method = "rf", data = train, ntree = 20)
+```
+
+The parameters of the final model:  
+```{r}
+fit7
+fit7$finalModel
+```
+
+The model's performance as applied to the test set:  
+```{r}
+confusionMatrix(test$classe, predict(fit7, newdata = test))
+```  
+
+The final model relies on 27 predictors in the training set (mtry = 27), and based on a 25-sample bootstrap for **cross validation**, yields an **estimated out-of-sample error rate of about 1.7%.**  
+
+Accuracy per number of predictors selected for use in the model:   
+
+```{r}
+plot(fit7)
+```
+  
+#### Validation  
+
+With the model performing well, it was used to predict the twenty additional cases in the validation set.  
+
+```{r}
+predict(fit7, newdata = validation)
+```  
+
+#### Conclusion 
+
+The random forest model appears to be an appropriately accurate classifier for this data and gives strong prediction performance.  One of the largest drawbacks with this model is that it is not easily interpreted as other models (e.g. regression).  I chose to make the trade-off of accuracy for interpretability in this case, but this is not to say that there aren't other modeling techniques equally as appropriate that are more easily interpreted and understood mechanically.
