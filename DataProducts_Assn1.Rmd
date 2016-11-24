@@ -16,10 +16,10 @@ silverline <- data.table(station = c("McLean", "Tysons Corner", "Greensboro", "S
 colorKey <- colorFactor(c("blue", "red"), domain = c(1,2))
 myMap <- leaflet(silverline) %>%
     addTiles() %>%
-    addPolylines(silverline[1:5]$lng, silverline[1:5]$lat) %>%
-    addPolylines(silverline[5:11]$lng, silverline[5:11]$lat, color = "red") %>%
+    addPolylines(silverline[1:5]$lng, silverline[1:5]$lat, layerId = 1) %>%
+    addPolylines(silverline[5:11]$lng, silverline[5:11]$lat, color = "red", layerId = 1) %>%
     addCircleMarkers(silverline$lng, silverline$lat, popup = silverline$station, color = ~colorKey(silverline$phase), radius = 8,
-        fill = TRUE, fillColor = ~colorKey(silverline$phase), fillOpacity = 0.5, stroke = FALSE) %>%
+        fill = TRUE, fillColor = ~colorKey(silverline$phase), fillOpacity = 0.5, stroke = FALSE, layerId = 2) %>%
     addLegend(labels = c("Phase I (2014)", "Phase II (2020)"), colors = c("blue", "red"))
 myMap
 ```
