@@ -1,0 +1,26 @@
+---
+title: "Washington Metro Silver Line Stations"
+author: "Sean Yarborough"
+date: "November 24, 2016"
+output: html_document
+---
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+library(data.table)
+library(dplyr)
+library(leaflet)
+silverline <- data.table(station = c("McLean", "Tysons Corner", "Greensboro", "Spring Hill", "Wiehle-Reston East", "Reston Town Center", "Herndon", "Innovation Center", "Washington Dulles Int'l Airport", "Loudoun Gateway", "Ashburn"), lat = c(38.92434, 38.92063, 38.9215, 38.929167, 38.94786, 38.952778, 38.9528, 38.961944, 38.955833, 38.992778, 39.0046), lng = c(-77.21048, -77.22193, -77.2344, -77.241944, -77.34041, -77.360278, -77.3852, -77.419167, -77.447778, -77.461667, -77.4909), phase = c(1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2))
+```
+
+```{r, echo = FALSE}
+colorKey <- colorFactor(c("blue", "red"), domain = c(1,2))
+myMap <- leaflet(silverline) %>%
+    addTiles() %>%
+    addCircleMarkers(silverline$lng, silverline$lat, popup = silverline$station, color = ~colorKey(silverline$phase), radius = 8,
+        fill = TRUE, fillColor = ~colorKey(silverline$phase), fillOpacity = 0.5, stroke = FALSE) %>%
+    addLegend(labels = c("Phase I (2014)", "Phase II (2020)"), colors = c("blue", "red")) %>%
+    addPolylines(silverline[1:5]$lng, silverline[1:5]$lat) %>%
+    addPolylines(silverline[5:11]$lng, silverline[5:11]$lat, color = "red")
+myMap
+```
+Station names and coordinates from Wikipedia.
